@@ -709,7 +709,7 @@ const ProductList: React.FC = () => {
                             ], upcomingFilter).map((collection, collectionIndex) => {
                               const collectionDate = new Date(collection.date);
                               const dayOfWeek = collectionDate.toLocaleDateString('en-US', { weekday: 'long' });
-                              const allCollected = collection.products.every((_, productIndex) => 
+                              const allCollected = collection.products.every((_: Product, productIndex: number) => 
                                 collectedProducts[`${collectionIndex}-${productIndex}`]
                               );
                               return (
@@ -726,7 +726,7 @@ const ProductList: React.FC = () => {
                                           id={`collected-${collectionIndex}`}
                                           checked={allCollected}
                                           onChange={() => {
-                                            collection.products.forEach((_, productIndex) => {
+                                            collection.products.forEach((_, productIndex: number) => {
                                               toggleProductCollected(collectionIndex, productIndex);
                                             });
                                           }}
@@ -738,7 +738,7 @@ const ProductList: React.FC = () => {
                                   </div>
                                   <h4 className="font-semibold mb-2">Products to Collect:</h4>
                                   <ul className="space-y-2">
-                                    {collection.products.map((product, productIndex) => {
+                                    {collection.products.map((product: Product, productIndex: number) => {
                                       const isCollected = collectedProducts[`${collectionIndex}-${productIndex}`];
                                       const isArrived = new Date() >= collectionDate;
                                       return (
