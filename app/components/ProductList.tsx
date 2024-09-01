@@ -816,6 +816,7 @@ const ProductList: React.FC = () => {
               cart={cart}
               updateCartItemQuantity={updateCartItemQuantity}
               removeFromCart={removeFromCart}
+              products = {products}
             />
           </div>
         </div>
