@@ -203,7 +203,7 @@ const ProductList: React.FC = () => {
   );
 
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-gray-100 min-h-screen font-sans">
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
@@ -424,7 +424,7 @@ const ProductList: React.FC = () => {
                                   <div 
                                     className="bg-indigo-600 h-2.5 rounded-full" 
                                     style={{width: `${(product.currentQuantity / product.minQuantity) * 100}%`}}
-                                  ></div>
+                                                                                                  ></div>
                                 </div>
                                 <p className="text-sm text-gray-600 mt-1">
                                   {product.minQuantity - product.currentQuantity} more to hit minimum quantity!
@@ -620,7 +620,7 @@ const ProductList: React.FC = () => {
                                     <div className="p-6 border-t border-gray-200">
                                       <h4 className="font-semibold mb-2">Products:</h4>
                                       <div className="space-y-2">
-                                        {payment.products.map((product, productIndex) => (
+                                        {payment.products.map((product: Product, productIndex: number) => (
                                           <div key={productIndex} className="flex items-center space-x-4">
                                             <Image
                                               src={product.image}
