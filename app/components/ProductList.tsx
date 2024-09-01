@@ -726,7 +726,7 @@ const ProductList: React.FC = () => {
                                           id={`collected-${collectionIndex}`}
                                           checked={allCollected}
                                           onChange={() => {
-                                            collection.products.forEach((_, productIndex: number) => {
+                                            collection.products.forEach((_: Product, productIndex: number) => {
                                               toggleProductCollected(collectionIndex, productIndex);
                                             });
                                           }}
