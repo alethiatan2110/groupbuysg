@@ -52,7 +52,7 @@ const ProductList: React.FC = () => {
   const categories = ['All', 'Food', 'Drinks', 'Home Essentials','Personal Care', 'Family & Kids'];
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const merchants = ['All', ...new Set(products.map(product => product.merchant))];
+  const merchants = ['All', ...Array.from(new Set(products.map(product => product.merchant)))];
   const [selectedMerchant, setSelectedMerchant] = useState<string>('All');
 
   const filteredProducts = products.filter(product =>
@@ -647,7 +647,7 @@ const ProductList: React.FC = () => {
                                 <div className="p-6 border-t border-gray-200">
                                   <h4 className="font-semibold mb-2">Products:</h4>
                                   <div className="space-y-4">
-                                    {order.products.map((product, productIndex) => {
+                                    {order.products.map((product: any, productIndex: number) => {
                                       const savings = product.originalAmount - product.amountDue;
                                       return (
                                         <div key={productIndex} className="flex flex-col md:flex-row md:items-center md:justify-between bg-gray-50 p-4 rounded-lg">
