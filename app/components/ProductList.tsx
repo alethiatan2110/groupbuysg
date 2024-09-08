@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Cart from './Cart';
+import LoginModal from './LoginModal';
 
 interface Product {
   id: number;
@@ -17,6 +18,7 @@ interface Product {
   category: string;
   minQuantity: number;
   currentQuantity: number;
+  merchant: string;
 }
 
 interface CartItem extends Product {
@@ -24,9 +26,9 @@ interface CartItem extends Product {
 }
 
 const products: Product[] = [
-  { id: 1, name: 'Organic Apples', price: 10.99, originalPrice: 13.74, quantity: 50, minQuantity: 30, currentQuantity: 15, collectionDate: '2024-09-15', qualities: ['fresh', 'healthy choices', 'organic'], image: '/images/organic-apples.jpg', purchaseCount: 120, category: 'Food' },
-  { id: 2, name: 'Sparkling Water', price: 1.50, originalPrice: 1.88, quantity: 100, minQuantity: 50, currentQuantity: 40, collectionDate: '2024-09-01', qualities: ['healthy choices'], image: '/images/sparkling-water.jpeg', purchaseCount: 85, category: 'Drinks' },
-  { id: 3, name: 'Durian', price: 35.00, originalPrice: 43.75, quantity: 30, minQuantity: 20, currentQuantity: 22, collectionDate: '2024-09-20', qualities: ['fresh', 'singapore favourites'], image: '/images/ah-seng-durian.jpg', purchaseCount: 50, category: 'Food' },
+  { id: 1, name: 'Organic Apples', price: 10.99, originalPrice: 13.74, quantity: 50, minQuantity: 30, currentQuantity: 15, collectionDate: '2024-09-15', qualities: ['fresh', 'healthy choices', 'organic'], image: '/images/organic-apples.jpg', purchaseCount: 120, category: 'Food', merchant: 'FreshFarms' },
+  { id: 2, name: 'Sparkling Water', price: 1.50, originalPrice: 1.88, quantity: 100, minQuantity: 50, currentQuantity: 40, collectionDate: '2024-09-01', qualities: ['healthy choices'], image: '/images/sparkling-water.jpeg', purchaseCount: 85, category: 'Drinks', merchant: 'BeverageCo' },
+  { id: 3, name: 'Durian', price: 35.00, originalPrice: 43.75, quantity: 30, minQuantity: 20, currentQuantity: 22, collectionDate: '2024-09-20', qualities: ['fresh', 'singapore favourites'], image: '/images/ah-seng-durian.jpg', purchaseCount: 50, category: 'Food', merchant: 'AhSengDurians' },
   // Add more products as needed
 ];
 
@@ -40,25 +42,28 @@ const ProductList: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedPayments, setExpandedPayments] = useState<number[]>([]);
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'today' | 'thisWeek'>('all');
   const [activeOrdersTab, setActiveOrdersTab] = useState<'pending' | 'upcoming'>('pending');
   const [upcomingFilter, setUpcomingFilter] = useState<'all' | 'today' | 'thisWeek'>('all');
   const [collectedProducts, setCollectedProducts] = useState<{[key: string]: boolean}>({});
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
 
   const categories = ['All', 'Food', 'Drinks', 'Home Essentials','Personal Care', 'Family & Kids'];
   const [selectedCategory, setSelectedCategory] = useState('All');
 
+  const merchants = ['All', ...new Set(products.map(product => product.merchant))];
+  const [selectedMerchant, setSelectedMerchant] = useState<string>('All');
+
   const filteredProducts = products.filter(product =>
     (selectedCategory === 'All' || product.category === selectedCategory) &&
+    (selectedMerchant === 'All' || product.merchant === selectedMerchant) &&
     (searchTerm === '' || product.name.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (selectedQualities.length === 0 || selectedQualities.every(q => product.qualities.includes(q))) &&
     (product.price >= priceRange[0] && product.price <= priceRange[1]) &&
     (collectionDateRange[0] === '' || product.collectionDate >= collectionDateRange[0]) &&
     (collectionDateRange[1] === '' || product.collectionDate <= collectionDateRange[1])
   );
-
-  const featuredProducts = products.slice(0, 3); // Just using the first 3 products as featured for this example
 
   const handleQualityToggle = (quality: string) => {
     setSelectedQualities(prev =>
@@ -115,14 +120,6 @@ const ProductList: React.FC = () => {
     setActivePage('deals');
   };
 
-  const togglePaymentExpansion = (index: number) => {
-    setExpandedPayments(prev => 
-      prev.includes(index) 
-        ? prev.filter(i => i !== index)
-        : [...prev, index]
-    );
-  };
-
   const filterPayments = (payments: any[], filter: 'all' | 'today' | 'thisWeek') => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -160,6 +157,28 @@ const ProductList: React.FC = () => {
   const toggleProductCollected = (collectionIndex: number, productIndex: number) => {
     const key = `${collectionIndex}-${productIndex}`;
     setCollectedProducts(prev => ({...prev, [key]: !prev[key]}));
+  };
+
+  const handleCheckout = () => {
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+    } else {
+      // Process the checkout
+      const newPayment = {
+        date: new Date().toISOString().split('T')[0],
+        amount: cart.reduce((total, item) => total + item.price * item.cartQuantity, 0),
+        originalAmount: cart.reduce((total, item) => total + item.originalPrice * item.cartQuantity, 0),
+        payTo: 'Group Buy Store',
+        paynow: '1234 5678',
+        products: cart.map(item => ({
+          ...item,
+          quantity: item.cartQuantity
+        }))
+      };
+      setPendingPayments(prev => [...prev, newPayment]);
+      setCart([]); // Clear the cart
+      alert('Your order has been submitted. Check your orders tab for payment information.');
+    }
   };
 
   const LoginForm = () => (
@@ -201,6 +220,15 @@ const ProductList: React.FC = () => {
       </div>
     </form>
   );
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().slice(-2);
+    const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+    return `${day}/${month}/${year} (${dayOfWeek})`;
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans">
@@ -271,48 +299,10 @@ const ProductList: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Deals closing soon */}
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold mb-4 text-gray-800">Deals closing soon ⏰</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {featuredProducts.map(product => (
-                      <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300 flex flex-col">
-                        <div className="relative">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            width={400}
-                            height={300}
-                            className="w-full h-48 object-cover"
-                          />
-                          <div className="absolute top-0 right-0 bg-red-500 text-white px-2 py-1 m-2 rounded-full text-xs font-bold">
-                            20% OFF
-                          </div>
-                        </div>
-                        <div className="p-4 flex-grow flex flex-col justify-between">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-2 text-gray-800">{product.name}</h3>
-                            <div className="flex items-baseline mb-2">
-                              <span className="text-2xl font-bold text-indigo-600">${product.price.toFixed(2)}</span>
-                              <span className="ml-2 text-lg text-gray-500 line-through">${(product.price * 1.25).toFixed(2)}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => addToCart(product, 1)}
-                            className="w-full bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition duration-300 mt-4"
-                          >
-                            Add to Cart
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Filters */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold mb-2">Categories:</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Categories:</h3>
                     <div className="flex flex-wrap">
                       {categories.map(category => (
                         <button
@@ -328,7 +318,23 @@ const ProductList: React.FC = () => {
                     </div>
                   </div>
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold mb-2">Qualities:</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Merchants:</h3>
+                    <div className="flex flex-wrap">
+                      {merchants.map(merchant => (
+                        <button
+                          key={merchant}
+                          onClick={() => setSelectedMerchant(merchant)}
+                          className={`mr-2 mb-2 px-3 py-1 rounded-full ${
+                            selectedMerchant === merchant ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {merchant}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Qualities:</h3>
                     <div className="flex flex-wrap">
                       {[ 'fresh','healthy choices', 'kid-friendly', 'organic', 'quick meals', 'singapore favourites', 'vegan' ].map(quality => (
                         <button
@@ -344,7 +350,7 @@ const ProductList: React.FC = () => {
                     </div>
                   </div>
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold mb-2">Price Range:</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Price Range:</h3>
                     <input
                       type="range"
                       min="1"
@@ -353,10 +359,10 @@ const ProductList: React.FC = () => {
                       onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
                       className="w-full"
                     />
-                    <p>Price range: ${priceRange[0]} - ${priceRange[1]}</p>
+                    <p className="text-gray-800">Price range: ${priceRange[0]} - ${priceRange[1]}</p>
                   </div>
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold mb-2">Collection Date Range:</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-800">Collection Date Range:</h3>
                     <div className="flex space-x-4 items-center">
                       <input
                         type="date"
@@ -408,6 +414,7 @@ const ProductList: React.FC = () => {
                             </div>
                             <p className="text-gray-600 mb-2">Available: {product.quantity}</p>
                             <p className="text-gray-600 mb-2">Collection: {product.collectionDate}</p>
+                            <p className="text-gray-600 mb-2">Merchant: {product.merchant}</p>
                             <div className="flex flex-wrap mb-2">
                               {product.qualities.map(quality => (
                                 <span key={quality} className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-sm mr-2 mb-2">{quality}</span>
@@ -535,112 +542,145 @@ const ProductList: React.FC = () => {
                         </button>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4">
-                        {/* Sample pending payment data - replace with actual data in a real application */}
                         {filterPayments([
                           { 
-                            date: '2023-09-30', 
-                            amount: 150.00, 
-                            originalAmount: 187.50,
-                            payTo: 'ABC Store', 
-                            paynow: '9123 4567', 
+                            orderId: 'ORD-001',
+                            orderDate: '2023-09-28',
                             products: [
-                              { ...products[0], quantity: 2 },
-                              { ...products[1], quantity: 3 },
+                              { 
+                                ...products[0], 
+                                quantity: 2, 
+                                amountDue: 21.98, 
+                                originalAmount: 27.48, 
+                                paymentDate: '2023-09-30',
+                                collectionDate: '2023-10-05'
+                              },
+                              { 
+                                ...products[1], 
+                                quantity: 3, 
+                                amountDue: 4.50, 
+                                originalAmount: 5.64, 
+                                paymentDate: '2023-09-30',
+                                collectionDate: '2023-10-05'
+                              },
                             ]
                           },
                           { 
-                            date: '2023-10-05', 
-                            amount: 75.50, 
-                            originalAmount: 94.38,
-                            payTo: 'XYZ Mart', 
-                            paynow: '9876 5432', 
+                            orderId: 'ORD-002',
+                            orderDate: '2023-10-03',
                             products: [
-                              { ...products[2], quantity: 1 },
-                              { ...products[0], quantity: 1 },
+                              { 
+                                ...products[2], 
+                                quantity: 1, 
+                                amountDue: 35.00, 
+                                originalAmount: 43.75, 
+                                paymentDate: '2023-10-05',
+                                collectionDate: '2023-10-10'
+                              },
+                              { 
+                                ...products[0], 
+                                quantity: 1, 
+                                amountDue: 10.99, 
+                                originalAmount: 13.74, 
+                                paymentDate: '2023-10-05',
+                                collectionDate: '2023-10-10'
+                              },
                             ]
                           },
                         ], paymentFilter).length > 0 ? (
                           <div className="space-y-6">
                             {filterPayments([
                               { 
-                                date: '2023-09-30', 
-                                amount: 150.00, 
-                                originalAmount: 187.50,
-                                payTo: 'ABC Store', 
-                                paynow: '9123 4567', 
+                                orderId: 'ORD-001',
+                                orderDate: '2023-09-28',
                                 products: [
-                                  { ...products[0], quantity: 2 },
-                                  { ...products[1], quantity: 3 },
+                                  { 
+                                    ...products[0], 
+                                    quantity: 2, 
+                                    amountDue: 21.98, 
+                                    originalAmount: 27.48, 
+                                    paymentDate: '2023-09-30',
+                                    collectionDate: '2023-10-05'
+                                  },
+                                  { 
+                                    ...products[1], 
+                                    quantity: 3, 
+                                    amountDue: 4.50, 
+                                    originalAmount: 5.64, 
+                                    paymentDate: '2023-09-30',
+                                    collectionDate: '2023-10-05'
+                                  },
                                 ]
                               },
                               { 
-                                date: '2023-10-05', 
-                                amount: 75.50, 
-                                originalAmount: 94.38,
-                                payTo: 'XYZ Mart', 
-                                paynow: '9876 5432', 
+                                orderId: 'ORD-002',
+                                orderDate: '2023-10-03',
                                 products: [
-                                  { ...products[2], quantity: 1 },
-                                  { ...products[0], quantity: 1 },
+                                  { 
+                                    ...products[2], 
+                                    quantity: 1, 
+                                    amountDue: 35.00, 
+                                    originalAmount: 43.75, 
+                                    paymentDate: '2023-10-05',
+                                    collectionDate: '2023-10-10'
+                                  },
+                                  { 
+                                    ...products[0], 
+                                    quantity: 1, 
+                                    amountDue: 10.99, 
+                                    originalAmount: 13.74, 
+                                    paymentDate: '2023-10-05',
+                                    collectionDate: '2023-10-10'
+                                  },
                                 ]
                               },
-                            ], paymentFilter).map((payment, index) => {
-                              const paymentDate = new Date(payment.date);
-                              const dayOfWeek = paymentDate.toLocaleDateString('en-US', { weekday: 'short' });
-                              const isExpanded = expandedPayments.includes(index);
-                              const savings = payment.originalAmount - payment.amount;
-                              return (
-                                <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden mb-4">
-                                  <div className="bg-gray-200 p-6">
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-                                      <div className="flex-1 mb-4 md:mb-0">
-                                        <p className="text-2xl font-bold text-black">${payment.amount.toFixed(2)}</p>
-                                        <p className="text-sm text-gray-600">Amount Due</p>
-                                        <p className="text-sm text-green-600 font-semibold">You saved: ${savings.toFixed(2)}</p>
-                                      </div>
-                                      <div className="flex-1 text-right">
-                                        <p className="text-2xl font-bold text-black">{payment.date}</p>
-                                        <p className="text-sm text-gray-600">Payment Date ({dayOfWeek})</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                                      <p className="text-gray-700 mb-2 md:mb-0"><span className="font-semibold">Pay to:</span> {payment.payTo}</p>
-                                      <p className="text-gray-700"><span className="font-semibold">Paynow:</span> {payment.paynow}</p>
+                            ], paymentFilter).map((order, index) => (
+                              <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden mb-4">
+                                <div className="bg-gray-200 p-6">
+                                  <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                      <p className="text-xl font-bold text-black">{order.orderId}</p>
+                                      <p className="text-sm text-gray-600">Order Date: {formatDate(order.orderDate)}</p>
                                     </div>
                                   </div>
-                                  <div className="px-6 py-3 bg-gray-100">
-                                    <button
-                                      onClick={() => togglePaymentExpansion(index)}
-                                      className="w-full text-gray-600 hover:text-gray-800 text-sm font-medium focus:outline-none"
-                                    >
-                                      {isExpanded ? 'Hide Products ▲' : 'Show Products ▼'}
-                                    </button>
-                                  </div>
-                                  {isExpanded && (
-                                    <div className="p-6 border-t border-gray-200">
-                                      <h4 className="font-semibold mb-2">Products:</h4>
-                                      <div className="space-y-2">
-                                        {payment.products.map((product: Product, productIndex: number) => (
-                                          <div key={productIndex} className="flex items-center space-x-4">
+                                </div>
+                                <div className="p-6 border-t border-gray-200">
+                                  <h4 className="font-semibold mb-2">Products:</h4>
+                                  <div className="space-y-4">
+                                    {order.products.map((product, productIndex) => {
+                                      const savings = product.originalAmount - product.amountDue;
+                                      return (
+                                        <div key={productIndex} className="flex flex-col md:flex-row md:items-center md:justify-between bg-gray-50 p-4 rounded-lg">
+                                          <div className="flex items-center mb-2 md:mb-0 md:w-1/3">
                                             <Image
                                               src={product.image}
                                               alt={product.name}
                                               width={50}
                                               height={50}
-                                              className="rounded-full"
+                                              className="rounded-full mr-4"
                                             />
                                             <div>
                                               <p className="font-medium">{product.name}</p>
                                               <p className="text-sm text-gray-600">Quantity: {product.quantity}</p>
+                                              <p className="text-lg font-bold text-black">${product.amountDue.toFixed(2)}</p>
+                                              <p className="text-sm text-green-600 font-semibold">Saved: ${savings.toFixed(2)}</p>
                                             </div>
                                           </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                                          <div className="text-center md:w-1/3">
+                                            <p className="font-semibold">Payment Due</p>
+                                            <p className="text-sm text-gray-600">{formatDate(product.paymentDate)}</p>
+                                          </div>
+                                          <div className="text-center md:w-1/3">
+                                            <p className="font-semibold">Collection Date</p>
+                                            <p className="text-sm text-gray-600">{formatDate(product.collectionDate)}</p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <p className="text-gray-600">No pending payments found for the selected filter.</p>
@@ -716,7 +756,7 @@ const ProductList: React.FC = () => {
                                 <div key={collectionIndex} className="bg-white rounded-lg shadow-md p-4">
                                   <div className="flex justify-between items-center mb-4">
                                     <div>
-                                      <p className="text-lg font-semibold">{collection.date} ({dayOfWeek})</p>
+                                      <p className="text-lg font-semibold">{formatDate(collection.date)}</p>
                                       <p className="text-sm text-gray-600">Collection Date</p>
                                     </div>
                                     <div className="flex items-center">
@@ -816,11 +856,23 @@ const ProductList: React.FC = () => {
               cart={cart}
               updateCartItemQuantity={updateCartItemQuantity}
               removeFromCart={removeFromCart}
-              products = {products}
+
+              onCheckout={handleCheckout}
             />
           </div>
         </div>
       </main>
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          onLogin={(phone, pass) => {
+            // Implement login logic here
+            setIsLoggedIn(true);
+            setShowLoginModal(false);
+            handleCheckout(); // Proceed with checkout after login
+          }}
+        />
+      )}
     </div>
   );
 };

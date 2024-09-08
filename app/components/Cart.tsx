@@ -12,17 +12,17 @@ interface CartProps {
   cart: CartItem[];
   updateCartItemQuantity: (id: number, newQuantity: number) => void;
   removeFromCart: (id: number) => void;
-  products: { [key: number]: { price: number, originalPrice?: number } };
+  onCheckout: () => void;
 }
 
-const Cart: React.FC<CartProps> = ({ cart, updateCartItemQuantity, removeFromCart, products }) => {
+const Cart: React.FC<CartProps> = ({ cart, updateCartItemQuantity, removeFromCart, onCheckout }) => {
   const total = cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
   const totalOriginal = cart.reduce((sum, item) => sum + (item.originalPrice || item.price) * item.cartQuantity, 0);
   const totalSavings = totalOriginal - total;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6 transform hover:scale-105 transition-all duration-300">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">Shopping Cart</h2>
+    <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
+      <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
       {cart.length === 0 ? (
         <p className="text-gray-600">Your cart is empty.</p>
       ) : (
@@ -59,17 +59,15 @@ const Cart: React.FC<CartProps> = ({ cart, updateCartItemQuantity, removeFromCar
               </div>
             </div>
           ))}
-          <div className="mt-4 text-xl font-bold flex justify-between items-center text-gray-800">
-            <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+          <div className="mt-6">
+            <p className="text-xl font-bold">Total: ${total.toFixed(2)}</p>
+            <button
+              onClick={onCheckout}
+              className="w-full bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition duration-300 mt-4"
+            >
+              Submit Order
+            </button>
           </div>
-          <div className="mt-2 text-lg text-green-600 font-semibold flex justify-between items-center">
-            <span>Total Savings:</span>
-            <span>${totalSavings.toFixed(2)}</span>
-          </div>
-          <button className="w-full mt-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105">
-            Checkout
-          </button>
         </>
       )}
     </div>
